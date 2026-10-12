@@ -1,22 +1,28 @@
-const jwt = require('jsonwebtoken'); 
-
-require('dotenv').config();
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 module.exports = (req, res, next) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
-    const decodedToken = jwt.verify(token, 'RANDOM_TOKEN_SECRET');
+    // ✅ Garde contre un header absent
+    if (!req.headers.authorization) {
+      return res.status(401).json({ error: "Token manquant" });
+    }
+
+    const token = req.headers.authorization.split(" ")[1];
+
+    // ✅ Fix principal : vrai secret depuis .env (plus de 'RANDOM_TOKEN_SECRET' hardcodé)
+    const decodedToken = jwt.verify(token, process.env.SECRET_TOKEN);
+
     const userId = decodedToken.userId;
-    req.auth = {userId};
+    req.auth = { userId };
+
     if (req.body.userId && req.body.userId !== userId) {
-      throw 'Invalid user ID';
-    } else {
-      next();
+      return res.status(403).json({ error: "User ID non valide" });
     }
-  } catch  {
-        //erreur authentification
-        res.status(401).json({
-          error: new Error('Invalid request!')});
-    }
+
+    next();
+  } catch (error) {
+    // ✅ Fix sérialisation : message en string, pas Error object
+    res.status(401).json({ error: "Requête non authentifiée" });
+  }
 };
-    
